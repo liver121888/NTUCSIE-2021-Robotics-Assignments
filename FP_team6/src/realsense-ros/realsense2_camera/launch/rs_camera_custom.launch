@@ -1,0 +1,164 @@
+<launch>
+  <!--serial communication between arduino and pc via usb /-->
+  <node name="arduino_serial_node" pkg="rosserial_python" type="serial_node.py" output="screen">
+    <param name="port" value="/dev/rikibase" />
+    <param name="baud" value="115200" />
+  </node>
+
+   <!-- IMU Relay and Filter -->
+     <!-- IMU relay from clbrobot_msgs/Imu to sensor_msgs/Imu -->
+    <node pkg="imu_calib" type="apply_calib" name="apply_calib" output="screen" respawn="false">
+        <param name="calib_file" value="$(find clbrobot)/param/imu/imu_calib.yaml" />
+        <param name="calibrate_gyros" value="true" />
+    </node>
+
+    <!-- Filter and fuse raw imu data -->
+    <node pkg="imu_filter_madgwick" type="imu_filter_node" name="imu_filter_madgwick" output="screen" respawn="false" >
+        <param name="fixed_frame" value="base_footprint" />
+        <param name="use_mag" value="false" />
+        <param name="publish_tf" value="false" />
+        <param name="use_magnetic_field_msg" value="false" />
+        <param name="world_frame" value="enu" />
+        <param name="orientation_stddev" value="0.05" />
+        <param name="angular_scale" value="1.09" />
+    </node>
+
+    <!-- default angular scale = 1 -->
+
+    <!-- Publish static transform from base_footprint to imu_link -->
+    <node pkg="tf" type="static_transform_publisher" name="base_footprint_to_imu_link" args="0 0 0 0 0 0  /base_footprint /imu_link  100"/>
+
+
+    <!-- Publish clbrobot odometry -->
+    <node pkg="clbrobot" name="riki_base_node" type="riki_base_node">
+        <param name="linear_scale" type="double" value="1.167" />
+    </node>
+
+    <!-- default linear scale = 1 -->
+
+    <!-- Publish static transform from base_footprint to base_link -->
+    <node pkg="tf" type="static_transform_publisher" name="base_footprint_to_base_link" args="0 0 0.098 0 0 0  /base_footprint /base_link  100"/>
+
+    <!-- Odom-IMU Extended Kalman Filter-->
+    <node pkg="robot_localization" type="ekf_localization_node" name="ekf_localization">
+        <remap from="odometry/filtered" to="odom" />
+        <rosparam command="load" file="$(find clbrobot)/param/ekf/robot_localization.yaml" />
+    </node>
+
+
+
+  <arg name="serial_no"           default=""/>
+  <arg name="usb_port_id"         default=""/>
+  <arg name="device_type"         default=""/>
+  <arg name="json_file_path"      default=""/>
+  <arg name="camera"              default="camera"/>
+  <arg name="tf_prefix"           default="$(arg camera)"/>
+  <arg name="external_manager"    default="false"/>
+  <arg name="manager"             default="realsense2_camera_manager"/>
+
+  <arg name="fisheye_width"       default="640"/>
+  <arg name="fisheye_height"      default="480"/>
+  <arg name="enable_fisheye"      default="true"/>
+
+  <arg name="depth_width"         default="640"/>
+  <arg name="depth_height"        default="480"/>
+  <arg name="enable_depth"        default="true"/>
+
+  <arg name="infra_width"        default="640"/>
+  <arg name="infra_height"       default="480"/>
+  <arg name="enable_infra1"       default="true"/>
+  <arg name="enable_infra2"       default="true"/>
+
+  <arg name="color_width"         default="640"/>
+  <arg name="color_height"        default="480"/>
+  <arg name="enable_color"        default="true"/>
+
+  <arg name="fisheye_fps"         default="30"/>
+  <arg name="depth_fps"           default="30"/>
+  <arg name="infra_fps"           default="30"/>
+  <arg name="color_fps"           default="30"/>
+  <arg name="gyro_fps"            default="400"/>
+  <arg name="accel_fps"           default="250"/>
+  <arg name="enable_gyro"         default="true"/>
+  <arg name="enable_accel"        default="true"/>
+
+  <arg name="enable_pointcloud"         default="false"/>
+  <arg name="pointcloud_texture_stream" default="RS2_STREAM_COLOR"/>
+  <arg name="pointcloud_texture_index"  default="0"/>
+
+  <arg name="enable_sync"               default="false"/>
+<!--modified-->
+  <arg name="align_depth"               default="true"/>
+
+  <arg name="publish_tf"                default="true"/>
+  <arg name="tf_publish_rate"           default="0"/>
+
+  <arg name="filters"                   default=""/>
+  <arg name="clip_distance"             default="-2"/>
+  <arg name="linear_accel_cov"          default="0.01"/>
+  <arg name="initial_reset"             default="false"/>
+  <arg name="unite_imu_method"          default=""/>
+  <arg name="topic_odom_in"             default="odom_in"/>
+  <arg name="calib_odom_file"           default=""/>
+  <arg name="publish_odom_tf"           default="true"/>
+  <arg name="allow_no_texture_points"   default="false"/>
+
+  <group ns="$(arg camera)">
+    <include file="$(find realsense2_camera)/launch/includes/nodelet.launch.xml">
+      <arg name="tf_prefix"                value="$(arg tf_prefix)"/>
+      <arg name="external_manager"         value="$(arg external_manager)"/>
+      <arg name="manager"                  value="$(arg manager)"/>
+      <arg name="serial_no"                value="$(arg serial_no)"/>
+      <arg name="usb_port_id"              value="$(arg usb_port_id)"/>
+      <arg name="device_type"              value="$(arg device_type)"/>
+      <arg name="json_file_path"           value="$(arg json_file_path)"/>
+
+      <arg name="enable_pointcloud"        value="$(arg enable_pointcloud)"/>
+      <arg name="pointcloud_texture_stream" value="$(arg pointcloud_texture_stream)"/>
+      <arg name="pointcloud_texture_index"  value="$(arg pointcloud_texture_index)"/>
+      <arg name="enable_sync"              value="$(arg enable_sync)"/>
+      <arg name="align_depth"              value="$(arg align_depth)"/>
+
+      <arg name="fisheye_width"            value="$(arg fisheye_width)"/>
+      <arg name="fisheye_height"           value="$(arg fisheye_height)"/>
+      <arg name="enable_fisheye"           value="$(arg enable_fisheye)"/>
+
+      <arg name="depth_width"              value="$(arg depth_width)"/>
+      <arg name="depth_height"             value="$(arg depth_height)"/>
+      <arg name="enable_depth"             value="$(arg enable_depth)"/>
+
+      <arg name="color_width"              value="$(arg color_width)"/>
+      <arg name="color_height"             value="$(arg color_height)"/>
+      <arg name="enable_color"             value="$(arg enable_color)"/>
+
+      <arg name="infra_width"              value="$(arg infra_width)"/>
+      <arg name="infra_height"             value="$(arg infra_height)"/>
+      <arg name="enable_infra1"            value="$(arg enable_infra1)"/>
+      <arg name="enable_infra2"            value="$(arg enable_infra2)"/>
+
+      <arg name="fisheye_fps"              value="$(arg fisheye_fps)"/>
+      <arg name="depth_fps"                value="$(arg depth_fps)"/>
+      <arg name="infra_fps"                value="$(arg infra_fps)"/>
+      <arg name="color_fps"                value="$(arg color_fps)"/>
+      <arg name="gyro_fps"                 value="$(arg gyro_fps)"/>
+      <arg name="accel_fps"                value="$(arg accel_fps)"/>
+      <arg name="enable_gyro"              value="$(arg enable_gyro)"/>
+      <arg name="enable_accel"             value="$(arg enable_accel)"/>
+
+      <arg name="publish_tf"               value="$(arg publish_tf)"/>
+      <arg name="tf_publish_rate"          value="$(arg tf_publish_rate)"/>
+
+      <arg name="filters"                  value="$(arg filters)"/>
+      <arg name="clip_distance"            value="$(arg clip_distance)"/>
+      <arg name="linear_accel_cov"         value="$(arg linear_accel_cov)"/>
+      <arg name="initial_reset"            value="$(arg initial_reset)"/>
+      <arg name="unite_imu_method"         value="$(arg unite_imu_method)"/>
+      <arg name="topic_odom_in"            value="$(arg topic_odom_in)"/>
+      <arg name="calib_odom_file"          value="$(arg calib_odom_file)"/>
+      <arg name="publish_odom_tf"          value="$(arg publish_odom_tf)"/>
+      <arg name="allow_no_texture_points"  value="$(arg allow_no_texture_points)"/>
+    </include>
+  </group>
+  <node pkg="tf" type="static_transform_publisher" name="base_link_to_camera_link" args="0.06 0 0.35 -1.5708 0.349 0  /base_link /camera_link  100"/>
+
+</launch>
