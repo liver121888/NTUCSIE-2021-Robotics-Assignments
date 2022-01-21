@@ -48,3 +48,4 @@ roslaunch find_object_2d find_object_3d_custom.launch
 ```
   
 src source: https://github.com/ykevin/rikirobot_project.git (Does not exist anymore)
+demo video: https://youtu.be/9vGfJ9OHpAs
